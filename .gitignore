@@ -7,3 +7,10 @@ __pycache__/
 assets/checkpoints/
 assets/export_models/
 coco/
+
+*.png
+
+*.log
+*.model
+*.pth
+/Data/**/*.zip
