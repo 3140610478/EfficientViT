@@ -9,18 +9,18 @@ base_folder = os.path.abspath(os.path.dirname(__file__))
 if base_folder not in sys.path:
     sys.path.append(base_folder)
 if True:
+    import config
     from Networks import criterion
+    from Networks.SegEViT import SegEViT
     from Data.Gaofen import train_loader, val_loader, len_train, len_val
     from Log.Logger import getLogger
     from efficientvit.seg_model_zoo import create_seg_model
-    from Networks.SegEViT import SegEViT
 
 save_folder = os.path.abspath(os.path.join(base_folder, './save'))
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = SegEViT().to(device)
+model = SegEViT().to(config.device)
 model.requires_grad_(True)
 for f in (criterion.bce, criterion.acc, criterion.miou):
-    f = f.to(device)
+    f = f.to(config.device)
 logger = getLogger("ISPRS Water-body Segmentation")
 
 
@@ -37,13 +37,10 @@ def train_epochs(model, start, end, lr=0.00001, transfer: bool=False):
             model.train()
         for x, y, z in tqdm(train_loader, desc="Training Batch"):
             optimizer.zero_grad()
-            x = x.to(device)
-            y = y.to(device)
-            z = z.to(device)
             
-            # z = torch.logical_or(z, y).to(torch.float32)
+            z = torch.logical_or(z, y).to(torch.float32)
             y_pre = model(x)
-            # y_pre = y_pre * z
+            y_pre = y_pre * z
 
             loss = criterion.bce(y_pre, y)
             acc = criterion.acc(y_pre, y)
@@ -62,13 +59,10 @@ def train_epochs(model, start, end, lr=0.00001, transfer: bool=False):
         model.eval()
         with torch.no_grad():
             for x, y, z in tqdm(val_loader, desc="Validating Batch"):
-                x = x.to(device)
-                y = y.to(device)
-                z = z.to(device)
                 
-                # z = torch.logical_or(z, y).to(torch.float32)
+                z = torch.logical_or(z, y).to(torch.float32)
                 y_pre = model(x)
-                # y_pre = y_pre * z
+                y_pre = y_pre * z
                 
                 loss = criterion.bce(y_pre, y)
                 acc = criterion.acc(y_pre, y)
@@ -111,8 +105,15 @@ if __name__ == "__main__":
     train_epochs(
         model,
         20,
-        50,
+        40,
         0.00002,
+        transfer=False,
+    )
+    train_epochs(
+        model,
+        40,
+        60,
+        0.000005,
         transfer=False,
     )
 

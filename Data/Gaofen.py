@@ -9,13 +9,23 @@ base_folder = os.path.abspath(os.path.join(
 if base_folder not in sys.path:
     sys.path.append(base_folder)
 if True:
-    from config import batch_size
+    import config
 
 # train_folder = os.path.abspath(os.path.join(base_folder, "./Data/augmented_train"))
 train_folder = os.path.abspath(os.path.join(base_folder, "./Data/train"))
 val_folder = os.path.abspath(os.path.join(base_folder, "./Data/val"))
 test_folder = os.path.abspath(os.path.join(base_folder, "./Data/test"))
-# batch_size = 1
+# config.batch_size = 1
+
+
+class ToDevice(torch.nn.Module):
+    def __init__(self, device=config.device):
+        super().__init__()
+        self.device = device
+
+    def forward(self, input: torch.Tensor):
+        return input.to(self.device).detach()
+
 
 # augmentation = None
 augmentation = transforms.Compose([
@@ -24,14 +34,27 @@ augmentation = transforms.Compose([
     transforms.RandomVerticalFlip(),
 ])
 augmentation_complex = transforms.Compose([
+    ToDevice(),
     transforms.CenterCrop(1020),
-    transforms.Pad(200, padding_mode="reflect"),
-    transforms.RandomRotation(degrees=30, expand=True),
+    transforms.Pad(600, padding_mode="reflect"),
+    transforms.RandomAffine(
+        degrees=15,
+        shear=(-15, 15, -15, 15),
+        interpolation=transforms.InterpolationMode.BILINEAR,
+    ),
     transforms.CenterCrop(1024),
+    transforms.RandomResizedCrop(
+        1024, scale=(0.8, 1.0),
+        ratio=(0.8, 1.25),
+        antialias=True,
+        interpolation=transforms.InterpolationMode.BILINEAR,
+    ),
+    transforms.ElasticTransform(),
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
-    transforms.RandomResizedCrop(1024, scale=(0.8, 1.0), ratio=(0.75, 1.333), antialias=True),
 ])
+
+
 class Gaofen(Dataset):
     def __init__(self, data_folder, transform=None):
         self.data_folder = os.path.abspath(data_folder)
@@ -42,7 +65,8 @@ class Gaofen(Dataset):
         ]
         self.ToTensor = transforms.ToTensor()
         self.transform = transform
-        self.length = len([file for file in os.listdir(self.image) if file.endswith('.png')])
+        self.length = len([file for file in os.listdir(
+            self.image) if file.endswith('.png')])
 
     def __len__(self) -> int:
         return self.length
@@ -61,21 +85,22 @@ class Gaofen(Dataset):
                 self.data_folder, f"./roi/{file_name}")),
         ]
         image, label, roi = [self.ToTensor(Image.open(file)) for file in files]
-        
+
         if self.transform is not None:
             pack = torch.concatenate((image, label, roi), dim=0)
-            pack = self.transform(pack)
+            pack = self.transform(pack).detach()
             image, label, roi = pack[:3], pack[3:4], pack[4:5]
             roi = roi.to(torch.int32)
         return image, label, roi
 
 
-train_set, val_set, test_set = Gaofen(train_folder, augmentation), Gaofen(val_folder), Gaofen(test_folder)
+train_set = Gaofen(train_folder, augmentation_complex)
+val_set, test_set = Gaofen(val_folder), Gaofen(test_folder)
 
 
-train_loader = DataLoader(train_set, batch_size, shuffle=True)
-val_loader = DataLoader(val_set, batch_size, shuffle=True)
-test_loader = DataLoader(test_set, batch_size, shuffle=True)
+train_loader = DataLoader(train_set, config.batch_size, shuffle=True)
+val_loader = DataLoader(val_set, config.batch_size, shuffle=True)
+test_loader = DataLoader(test_set, config.batch_size, shuffle=True)
 len_train, len_val, len_test = len(train_set), len(val_set), len(test_set)
 info = f"""
 Gaofen Datasets

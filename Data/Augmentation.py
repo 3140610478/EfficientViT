@@ -8,10 +8,12 @@ base_folder = os.path.abspath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), ".."))
 if base_folder not in sys.path:
     sys.path.append(base_folder)
+if True:
+    from Gaofen import ToDevice
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 augmentation_factor = 8
-num_threads = 64
+num_threads = 8
 image_dir = os.path.abspath(os.path.join(base_folder, "./Data/train/image"))
 label_dir = os.path.abspath(os.path.join(base_folder, "./Data/train/label"))
 roi_dir = os.path.abspath(os.path.join(base_folder, "./Data/train/roi"))
@@ -19,16 +21,24 @@ output_dir = os.path.join(base_folder, "./Data/augmented_train")
 
 # 图像增强转换器（与原始代码相同）
 pre_transform = transforms.Compose([
+    ToDevice(),
     transforms.CenterCrop(1020),
-    transforms.Pad(320, padding_mode="reflect"),
+    transforms.Pad(600, padding_mode="reflect"),
 ])
 transform = transforms.Compose([
-    transforms.RandomRotation(degrees=30, expand=True),
-    transforms.CenterCrop(1200),
-    transforms.RandomResizedCrop(
-        1200, scale=(0.8, 1.0), ratio=(0.75, 1.333), antialias=True
+    transforms.RandomAffine(
+        degrees=15,
+        shear=(-15, 15, -15, 15),
+        interpolation=transforms.InterpolationMode.BILINEAR,
     ),
-    transforms.RandomCrop(1024),
+    transforms.CenterCrop(1024),
+    transforms.RandomResizedCrop(
+        1024, scale=(0.8, 1.0),
+        ratio=(0.8, 1.25),
+        antialias=True,
+        interpolation=transforms.InterpolationMode.BILINEAR,
+    ),
+    transforms.ElasticTransform(),
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
 ])
