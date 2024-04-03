@@ -23,7 +23,7 @@ output_dir = os.path.join(base_folder, "./Data/augmented_train")
 pre_transform = transforms.Compose([
     ToDevice(),
     transforms.CenterCrop(1020),
-    transforms.Pad(600, padding_mode="reflect"),
+    transforms.Pad(700, padding_mode="reflect"),
 ])
 transform = transforms.Compose([
     transforms.RandomAffine(
@@ -31,9 +31,9 @@ transform = transforms.Compose([
         shear=(-15, 15, -15, 15),
         interpolation=transforms.InterpolationMode.BILINEAR,
     ),
-    transforms.CenterCrop(1024),
+    transforms.CenterCrop(1200),
     transforms.RandomResizedCrop(
-        1024, scale=(0.8, 1.0),
+        1200, scale=(0.8, 1.0),
         ratio=(0.8, 1.25),
         antialias=True,
         interpolation=transforms.InterpolationMode.BILINEAR,

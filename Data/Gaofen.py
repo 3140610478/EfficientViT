@@ -29,6 +29,7 @@ class ToDevice(torch.nn.Module):
 
 # augmentation = None
 augmentation = transforms.Compose([
+    ToDevice(),
     transforms.RandomCrop(1024, padding=64, padding_mode="symmetric"),
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
@@ -56,7 +57,7 @@ augmentation_complex = transforms.Compose([
 
 
 class Gaofen(Dataset):
-    def __init__(self, data_folder, transform=None):
+    def __init__(self, data_folder, transform=ToDevice()):
         self.data_folder = os.path.abspath(data_folder)
         self.image, self.label, self.roi = [
             os.path.abspath(os.path.join(self.data_folder, "./image")),
@@ -86,15 +87,14 @@ class Gaofen(Dataset):
         ]
         image, label, roi = [self.ToTensor(Image.open(file)) for file in files]
 
-        if self.transform is not None:
-            pack = torch.concatenate((image, label, roi), dim=0)
-            pack = self.transform(pack).detach()
-            image, label, roi = pack[:3], pack[3:4], pack[4:5]
-            roi = roi.to(torch.int32)
+        pack = torch.concatenate((image, label, roi), dim=0)
+        pack = self.transform(pack).detach()
+        image, label, roi = pack[:3], pack[3:4], pack[4:5]
+        roi = roi.to(torch.int32)
         return image, label, roi
 
 
-train_set = Gaofen(train_folder, augmentation_complex)
+train_set = Gaofen(train_folder, augmentation)
 val_set, test_set = Gaofen(val_folder), Gaofen(test_folder)
 
 
